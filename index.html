@@ -25,6 +25,7 @@
             </h1>
             <p class="text-gray-400 mt-3 text-lg">Professionelle Korrektur in Echtzeit.</p>
         </header>
+
         <div class="grid md:grid-cols-2 gap-8">
             <div class="flex flex-col space-y-4">
                 <div class="flex items-center justify-between px-2">
@@ -42,6 +43,7 @@
                     <textarea id="inputText" rows="12" placeholder="Text hier rein..." class="w-full p-4 bg-gray-800 border-none rounded-xl text-gray-100 placeholder-gray-500 resize-none focus:outline-none text-lg" oninput="debounceCorrection()"></textarea>
                 </div>
             </div>
+
             <div class="flex flex-col space-y-4">
                 <div class="flex items-center justify-between px-2">
                     <label class="text-xl font-bold text-emerald-300">Korrektur</label>
@@ -59,10 +61,12 @@
                 </div>
             </div>
         </div>
+
         <div id="errorBox" class="mt-6 p-4 bg-red-900/50 border border-red-500 text-red-200 rounded-xl hidden flex items-center">
             <i data-lucide="alert-circle" class="mr-3"></i>
             <span id="errorMessage"></span>
         </div>
+
         <div class="mt-10 flex justify-center space-x-4">
             <button onclick="handleCorrection(true)" id="manualBtn" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl transition-all hover:-translate-y-1 flex items-center space-x-2">
                 <i data-lucide="sparkles" class="w-5 h-5"></i>
@@ -74,14 +78,19 @@
 
     <script type="module">
         let apiKey = localStorage.getItem('my_gemini_key');
+
         if (!apiKey || apiKey === "null") {
-            apiKey = prompt("Bitte gib deinen Google API-Key ein (AIza...):");
-            if (apiKey) localStorage.setItem('my_gemini_key', apiKey);
+            apiKey = prompt("Bitte gib deinen Google API-Key ein (er fängt mit AIza... an):");
+            if (apiKey) {
+                localStorage.setItem('my_gemini_key', apiKey);
+            }
         }
 
         const modelName = "gemini-1.5-flash";
+
         function getApiUrl() {
-            return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${localStorage.getItem('my_gemini_key')}`;
+            const currentKey = localStorage.getItem('my_gemini_key');
+            return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentKey}`;
         }
 
         const inputText = document.getElementById('inputText');
@@ -91,41 +100,60 @@
         const errorBox = document.getElementById('errorBox');
         const statusText = document.getElementById('statusText');
         const emojiToggle = document.getElementById('emojiToggle');
+
         let timer;
 
         window.debounceCorrection = () => {
             statusText.innerText = "Tippt...";
             clearTimeout(timer);
-            if (inputText.value.trim().length < 5) return;
+            if (inputText.value.trim().length < 5) {
+                outputText.value = "";
+                copyBtn.disabled = true;
+                return;
+            }
             timer = setTimeout(() => handleCorrection(false), 1200);
         };
 
         window.handleCorrection = async (isManual) => {
             const text = inputText.value.trim();
             if (text.length < 5) return;
+
             errorBox.classList.add('hidden');
             loading.classList.remove('hidden');
             statusText.innerText = "KI korrigiert...";
-            let instruktion = "Du bist ein präziser deutscher Lektor. Korrigiere Rechtschreibung, Grammatik und Zeichensetzung. Antworte NUR mit dem korrigierten Text.";
-            if (emojiToggle.checked) instruktion += " Füge passende Emojis ein.";
+            
+            let instruktion = "Du bist ein präziser deutscher Lektor. Korrigiere Rechtschreibung, Grammatik und Zeichensetzung. Antworte NUR mit dem korrigierten Text, ohne Erklärungen.";
+            
+            if (emojiToggle.checked) {
+                instruktion += " Füge außerdem passende, dezente Emojis ein.";
+            }
 
             try {
                 const response = await fetch(getApiUrl(), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: `${instruktion}\n\nText:\n${text}` }] }] })
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `${instruktion}\n\nText:\n${text}` }] }]
+                    })
                 });
+
                 const data = await response.json();
-                if (data.candidates) {
+
+                if (data.candidates && data.candidates[0].content) {
                     outputText.value = data.candidates[0].content.parts[0].text.trim();
                     copyBtn.disabled = false;
                     statusText.innerText = "Fertig";
                 } else {
-                    throw new Error("API-Key ungültig oder Fehler bei Google.");
+                    if (data.error && data.error.status === "UNAUTHENTICATED") {
+                        localStorage.removeItem('my_gemini_key');
+                        throw new Error("API-Key ungültig. Seite neu laden!");
+                    }
+                    throw new Error(data.error ? data.error.message : "Prüfe deinen Key");
                 }
             } catch (err) {
                 document.getElementById('errorMessage').innerText = err.message;
                 errorBox.classList.remove('hidden');
+                statusText.innerText = "Fehler";
             } finally {
                 loading.classList.add('hidden');
             }
@@ -133,12 +161,20 @@
 
         window.copyText = () => {
             navigator.clipboard.writeText(outputText.value);
+            const originalIcon = copyBtn.innerHTML;
             copyBtn.innerHTML = '<i data-lucide="check" class="w-6 h-6"></i>';
             lucide.createIcons();
-            setTimeout(() => { copyBtn.innerHTML = '<i data-lucide="copy" class="w-6 h-6"></i>'; lucide.createIcons(); }, 2000);
+            setTimeout(() => {
+                copyBtn.innerHTML = originalIcon;
+                lucide.createIcons();
+            }, 2000);
         };
 
-        window.resetKey = () => { localStorage.removeItem('my_gemini_key'); location.reload(); };
+        window.resetKey = () => {
+            localStorage.removeItem('my_gemini_key');
+            location.reload();
+        };
+
         window.onload = () => lucide.createIcons();
     </script>
 </body>
