@@ -90,7 +90,7 @@
 
         function getApiUrl() {
             const currentKey = localStorage.getItem('my_gemini_key');
-            return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentKey}`;
+            return `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${currentKey}`;
         }
 
         const inputText = document.getElementById('inputText');
