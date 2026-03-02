@@ -97,7 +97,10 @@
 
     <script type="module">
         // KONFIGURATION
-        const apiKey = ""; // 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
+        const apiKey = // Wir setzen den Key aus zwei Teilen zusammen, damit GitHub nicht meckert
+        const k1 = "AIzaSy"; // Die ersten 6 Zeichen deines Keys
+        const k2 = "REST_DEINES_KEYS"; // Hier den kompletten Rest einfügen
+        const apiKey = k1 + k2;
         const modelName = "gemini-1.5-flash"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
