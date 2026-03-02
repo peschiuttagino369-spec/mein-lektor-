@@ -77,12 +77,13 @@
     </div>
 
     <script type="module">
+        // --- SICHERE KONFIGURATION ---
         let apiKey = localStorage.getItem('my_gemini_key');
 
-        if (!apiKey || apiKey === "null") {
-            apiKey = prompt("Bitte gib deinen Google API-Key ein (er fängt mit AIza... an):");
+        if (!apiKey || apiKey === "null" || apiKey === "") {
+            apiKey = prompt("Bitte gib deinen Google API-Key ein (AIza...):");
             if (apiKey) {
-                localStorage.setItem('my_gemini_key', apiKey);
+                localStorage.setItem('my_gemini_key', apiKey.trim());
             }
         }
 
@@ -123,10 +124,7 @@
             statusText.innerText = "KI korrigiert...";
             
             let instruktion = "Du bist ein präziser deutscher Lektor. Korrigiere Rechtschreibung, Grammatik und Zeichensetzung. Antworte NUR mit dem korrigierten Text, ohne Erklärungen.";
-            
-            if (emojiToggle.checked) {
-                instruktion += " Füge außerdem passende, dezente Emojis ein.";
-            }
+            if (emojiToggle.checked) instruktion += " Füge passende Emojis ein.";
 
             try {
                 const response = await fetch(getApiUrl(), {
@@ -144,11 +142,11 @@
                     copyBtn.disabled = false;
                     statusText.innerText = "Fertig";
                 } else {
-                    if (data.error && data.error.status === "UNAUTHENTICATED") {
+                    if (data.error && (data.error.status === "UNAUTHENTICATED" || data.error.code === 400)) {
                         localStorage.removeItem('my_gemini_key');
-                        throw new Error("API-Key ungültig. Seite neu laden!");
+                        throw new Error("API-Key ungültig oder falsch kopiert. Seite neu laden und Key ohne Leerzeichen eingeben!");
                     }
-                    throw new Error(data.error ? data.error.message : "Prüfe deinen Key");
+                    throw new Error(data.error ? data.error.message : "Unbekannter Fehler von Google.");
                 }
             } catch (err) {
                 document.getElementById('errorMessage').innerText = err.message;
